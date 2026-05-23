@@ -31,43 +31,6 @@ Built with Next.js 15, TypeScript, Tailwind CSS, Google Gemini AI, and Supabase.
 
 ---
 
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment variables
-
-Create a `.env` file in the project root:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-NEXT_PUBLIC_OPENWEATHER_API_KEY=your_openweather_key
-```
-
-- Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/)
-- Get Supabase credentials from [Supabase Dashboard](https://supabase.com/) → Project Settings → API
-
-### 3. Set up the database
-
-Open the Supabase **SQL Editor** and run the contents of [`supabase/schema.sql`](supabase/schema.sql).
-
-### 4. Start the dev server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
----
-
 ## Demo Mode
 
 If Supabase is not configured, the app runs in **Demo Mode** automatically:

@@ -1,0 +1,185 @@
+{
+  "name": "Krishi-Setu Daily Market Prices & Weather Alerts Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-daily",
+      "name": "Daily at 6:00 AM",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.data.gov.in/resource/9ef8428a-d404-411a-bb24-5a3741221a91?api-key=YOUR_GOV_API_KEY&format=json&filters[state]=Karnataka",
+        "options": {}
+      },
+      "id": "get-mandi-prices",
+      "name": "Fetch APMC Mandi Prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/forecast?q=Mandya,IN&appid=YOUR_OPENWEATHER_KEY&units=metric",
+        "options": {}
+      },
+      "id": "get-weather-data",
+      "name": "Fetch Weather Alert Forecasts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst mapped = items[0].json.records.map(r => ({\n  crop_name_en: r.commodity,\n  crop_name_kn: r.commodity === 'Ragi' ? 'ರಾಗಿ' : r.commodity === 'Paddy' ? 'ಭತ್ತ' : 'ಇತರ ಬೆಳೆ',\n  mandi_name_en: r.market,\n  mandi_name_kn: r.market === 'Mandya' ? 'ಮಂಡ್ಯ' : r.market === 'Yeshwanthpur' ? 'ಯಶವಂತಪುರ' : r.market,\n  price_min: parseFloat(r.min_price),\n  price_max: parseFloat(r.max_price),\n  price_avg: parseFloat(r.modal_price),\n  trend: parseFloat(r.modal_price) > 3000 ? 'up' : 'stable'\n}));\nreturn mapped.map(x => ({ json: x }));"
+      },
+      "id": "map-prices",
+      "name": "Transform Price Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.all()[0].json;\nconst threeHourForecast = data.list[0];\nconst rainProb = threeHourForecast.pop || 0;\nconst temp = threeHourForecast.main.temp;\nconst humidity = threeHourForecast.main.humidity;\n\nlet alert_en = null;\nlet alert_kn = null;\n\nif (rainProb > 0.7) {\n  alert_en = 'Heavy rain predicted in next few hours! Protect dry crops and delay fertilizer spraying.';\n  alert_kn = 'ಮುಂದಿನ ಕೆಲವು ಗಂಟೆಗಳಲ್ಲಿ ಭಾರಿ ಮಳೆ ಮುನ್ಸೂಚನೆ! ಕೊಯ್ಲು ಮಾಡಿದ ಒಣ ಬೆಳೆ ರಕ್ಷಿಸಿ ಮತ್ತು ಗೊಬ್ಬರ ಸಿಂಪಡಣೆ ಮುಂದೂಡಿ.';\n} else if (humidity > 85) {\n  alert_en = 'High humidity detected. Watch out for potential fungal spots or blights on crop leaves.';\n  alert_kn = 'ಹೆಚ್ಚಿನ ಆರ್ದ್ರತೆ ಕಂಡುಬಂದಿದೆ. ಎಲೆಗಳ ಮೇಲೆ ಶಿಲೀಂಧ್ರ ರೋಗ ಅಥವಾ ಚುಕ್ಕೆ ರೋಗ ಕಾಣಿಸಿಕೊಳ್ಳುವ ಸಾಧ್ಯತೆಯಿದೆ, ಎಚ್ಚರವಿರಲಿ.';\n}\n\nreturn [{\n  json: {\n    district: 'Mandya',\n    temp_celsius: temp,\n    humidity: humidity,\n    rain_probability: rainProb * 100,\n    alert_text_en: alert_en,\n    alert_text_kn: alert_kn\n  }\n}];"
+      },
+      "id": "map-weather",
+      "name": "Analyze Weather Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableName": "crop_prices",
+        "columns": "crop_name_en,crop_name_kn,mandi_name_en,mandi_name_kn,price_min,price_max,price_avg,trend",
+        "options": {}
+      },
+      "id": "supabase-insert-prices",
+      "name": "Supabase: Save Crop Prices",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        900,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credential-id",
+          "name": "AgriMithra Supabase Production"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableName": "weather_logs",
+        "columns": "district,temp_celsius,humidity,rain_probability,alert_text_en,alert_text_kn",
+        "options": {}
+      },
+      "id": "supabase-insert-weather",
+      "name": "Supabase: Save Weather Log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        900,
+        400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credential-id",
+          "name": "AgriMithra Supabase Production"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily at 6:00 AM": {
+      "main": [
+        [
+          {
+            "node": "Fetch APMC Mandi Prices",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Weather Alert Forecasts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch APMC Mandi Prices": {
+      "main": [
+        [
+          {
+            "node": "Transform Price Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Weather Alert Forecasts": {
+      "main": [
+        [
+          {
+            "node": "Analyze Weather Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Price Records": {
+      "main": [
+        [
+          {
+            "node": "Supabase: Save Crop Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Weather Risk": {
+      "main": [
+        [
+          {
+            "node": "Supabase: Save Weather Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "theme_color": "#22C55E",
+  "background_color": "#F8FAFC",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "name": "Krishi-Setu",
+  "short_name": "AgriMithra",
+  "description": "Farmer-Friendly Multilingual AI Companion",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?w=192&h=192&fit=crop",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?w=512&h=512&fit=crop",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
